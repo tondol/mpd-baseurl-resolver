@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<head>
+    <title>MPD BaseURL Resolver</title>
+</head>
+<body>
+    <h1>MPD BaseURL Resolver</h1>
+    <form>
+        <p>
+            master.mpd または master.json の URL:
+            <input id="inputMPDURL" type="text"/>
+        </p>
+        <p>
+            master.mpd の中身:
+            <textarea id="inputTextArea" placeholder="ここに.mpdファイルの中身をペーストする"></textarea>
+        </p>
+        <p><button id="resolveButton">Resolve!</button></p>
+    </form>
+    <p>
+        変換結果:
+        <textarea id="outputTextArea" readonly></textarea>
+    </p>
+    <script>
+        const inputMPDURL = document.getElementById("inputMPDURL")
+        const inputTextArea = document.getElementById("inputTextArea")
+        const outputTextArea = document.getElementById("outputTextArea")
+
+        const dirname = (path) => {
+            const lastIndex = path.lastIndexOf('/')
+            if (lastIndex < 0) {
+                return undefined
+            }
+
+            return path.substring(0, lastIndex + 1)
+        }
+
+        document.getElementById("resolveButton").addEventListener('click', (e) => {
+            e.preventDefault()
+            
+            const parser = new DOMParser()
+            const dom = parser.parseFromString(inputTextArea.value, 'application/xml')
+            const parentBaseURL = dom.querySelector('MPD > BaseURL')?.textContent
+            if (parentBaseURL === null) {
+                window.alert(".mpdファイルの内容が不正")
+                return
+            }
+
+            const mpdURL = inputMPDURL.value
+            console.log(`mpdURL = ${mpdURL}`)
+            const mpdParentURL = dirname(mpdURL)
+            if (mpdParentURL === undefined) {
+                window.alert(`mpdURLが不正 ${mpdURL}`)
+                return
+            }
+            console.log(`mpdParentURL = ${mpdParentURL}`)
+
+            const baseURLs = dom.querySelectorAll('Representation > BaseURL')
+            if (baseURLs === null) {
+                window.alert(".mpdファイルの内容が不正")
+                return
+            }
+
+            baseURLs.forEach((e) => {
+                const baseURL = e.textContent
+                const newBaseURL = mpdParentURL + parentBaseURL + baseURL
+                e.textContent = newBaseURL
+            })
+
+            const serializer = new XMLSerializer()
+            const newXML = serializer.serializeToString(dom)
+            outputTextArea.value = newXML
+        })
+    </script>
+</body>
+</html>
